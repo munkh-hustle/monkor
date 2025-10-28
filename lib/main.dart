@@ -50,7 +50,7 @@ class _DictionaryHomeState extends State<DictionaryHome> {
     _loadWords();
   }
 
-    Future<void> _loadWords() async {
+  Future<void> _loadWords() async {
     try {
       // Use WordService to load merged data
       final wordResponse = await _wordService.loadWords();
@@ -74,13 +74,13 @@ class _DictionaryHomeState extends State<DictionaryHome> {
       setState(() {
         _isLoading = true;
       });
-      
+
       final wordResponse = await _wordService.loadWordsFromFile(filePath);
       setState(() {
         _words = wordResponse.channel.items;
         _filteredWords = _words;
         _isLoading = false;
-        _currentFile = _getFileName(filePath) + ' (${_words.length} words)';
+        _currentFile = '${_getFileName(filePath)} (${_words.length} words)';
       });
     } catch (e) {
       setState(() {
@@ -109,19 +109,20 @@ class _DictionaryHomeState extends State<DictionaryHome> {
     }
 
     setState(() {
-      _filteredWords = _words.where((word) {
-        final korean = word.wordInfo.orgWord.toLowerCase();
-        final hanja = word.wordInfo.orgLanguage.toLowerCase();
-        final searchLower = query.toLowerCase();
-        return korean.contains(searchLower) || hanja.contains(searchLower);
-      }).toList();
+      _filteredWords =
+          _words.where((word) {
+            final korean = word.wordInfo.orgWord.toLowerCase();
+            final hanja = word.wordInfo.orgLanguage.toLowerCase();
+            final searchLower = query.toLowerCase();
+            return korean.contains(searchLower) || hanja.contains(searchLower);
+          }).toList();
     });
   }
 
   // Get unique collections by part of speech and level
   List<Collection> getCollections() {
     Map<String, Collection> collections = {};
-    
+
     for (var word in _words) {
       final key = '${word.wordInfo.partOfSpeech}-${word.wordInfo.level}';
       if (!collections.containsKey(key)) {
@@ -134,7 +135,7 @@ class _DictionaryHomeState extends State<DictionaryHome> {
       }
       collections[key]!.words.add(word);
     }
-    
+
     return collections.values.toList();
   }
 
@@ -182,13 +183,14 @@ class _DictionaryHomeState extends State<DictionaryHome> {
           ),
         ],
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : _errorMessage.isNotEmpty
+      body:
+          _isLoading
+              ? Center(child: CircularProgressIndicator())
+              : _errorMessage.isNotEmpty
               ? Center(child: Text(_errorMessage))
               : _currentIndex == 0
-                  ? _buildDictionaryView()
-                  : _buildFlashcardView(),
+              ? _buildDictionaryView()
+              : _buildFlashcardView(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
@@ -197,14 +199,8 @@ class _DictionaryHomeState extends State<DictionaryHome> {
           });
         },
         items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: '사전',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.flip),
-            label: '플래시카드',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.search), label: '사전'),
+          BottomNavigationBarItem(icon: Icon(Icons.flip), label: '플래시카드'),
         ],
       ),
     );
@@ -253,120 +249,128 @@ class _DictionaryHomeState extends State<DictionaryHome> {
 
         // Word List
         Expanded(
-          child: _filteredWords.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.search_off,
-                        size: 64,
-                        color: Colors.grey[400],
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        '검색 결과가 없습니다',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[600],
+          child:
+              _filteredWords.isEmpty
+                  ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.search_off,
+                          size: 64,
+                          color: Colors.grey[400],
                         ),
-                      ),
-                    ],
+                        SizedBox(height: 16),
+                        Text(
+                          '검색 결과가 없습니다',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                  : ListView.builder(
+                    itemCount: _filteredWords.length,
+                    itemBuilder: (context, index) {
+                      return WordCard(wordItem: _filteredWords[index]);
+                    },
                   ),
-                )
-              : ListView.builder(
-                  itemCount: _filteredWords.length,
-                  itemBuilder: (context, index) {
-                    return WordCard(wordItem: _filteredWords[index]);
-                  },
-                ),
         ),
       ],
     );
   }
 
-// Add this to your _buildFlashcardView method
-Widget _buildFlashcardView() {
-  final collections = getCollections();
-  
-  return Column(
-    children: [
-      // File info header
-      Container(
-        width: double.infinity,
-        padding: EdgeInsets.all(16),
-        color: Colors.blue[50],
-        child: Text(
-          '현재 파일: $_currentFile',
-          style: TextStyle(fontSize: 14, color: Colors.blue[800]),
-          textAlign: TextAlign.center,
+  // Add this to your _buildFlashcardView method
+  Widget _buildFlashcardView() {
+    final collections = getCollections();
+
+    return Column(
+      children: [
+        // File info header
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(16),
+          color: Colors.blue[50],
+          child: Text(
+            '현재 파일: $_currentFile',
+            style: TextStyle(fontSize: 14, color: Colors.blue[800]),
+            textAlign: TextAlign.center,
+          ),
         ),
-      ),
-      
-      Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Text(
-          '컬렉션 선택',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+
+        Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text(
+            '컬렉션 선택',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
         ),
-      ),
-      
-      // Collection statistics
-      Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+
+        // Collection statistics
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildStatCard('총 단어', _words.length.toString()),
+              _buildStatCard('컬렉션', collections.length.toString()),
+              _buildStatCard('레벨', _getLevelCount().toString()),
+            ],
+          ),
+        ),
+
+        SizedBox(height: 16),
+
+        Expanded(
+          child: ListView.builder(
+            itemCount: collections.length,
+            itemBuilder: (context, index) {
+              final collection = collections[index];
+              return CollectionCard(
+                collection: collection,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) => FlashcardScreen(collection: collection),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(String title, String value) {
+    return Card(
+      child: Padding(
+        padding: EdgeInsets.all(12),
+        child: Column(
           children: [
-            _buildStatCard('총 단어', _words.length.toString()),
-            _buildStatCard('컬렉션', collections.length.toString()),
-            _buildStatCard('레벨', _getLevelCount().toString()),
+            Text(
+              value,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              title,
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
           ],
         ),
       ),
-      
-      SizedBox(height: 16),
-      
-      Expanded(
-        child: ListView.builder(
-          itemCount: collections.length,
-          itemBuilder: (context, index) {
-            final collection = collections[index];
-            return CollectionCard(
-              collection: collection,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FlashcardScreen(collection: collection),
-                  ),
-                );
-              },
-            );
-          },
-        ),
-      ),
-    ],
-  );
-}
+    );
+  }
 
-Widget _buildStatCard(String title, String value) {
-  return Card(
-    child: Padding(
-      padding: EdgeInsets.all(12),
-      child: Column(
-        children: [
-          Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-        ],
-      ),
-    ),
-  );
-}
-
-int _getLevelCount() {
-  final levels = _words.map((word) => word.wordInfo.level).toSet();
-  return levels.length;
-}
+  int _getLevelCount() {
+    final levels = _words.map((word) => word.wordInfo.level).toSet();
+    return levels.length;
+  }
 }
 
 class Collection {
@@ -406,10 +410,7 @@ class CollectionCard extends StatelessWidget {
             color: _getColorForPartOfSpeech(collection.partOfSpeech),
             shape: BoxShape.circle,
           ),
-          child: Icon(
-            Icons.library_books,
-            color: Colors.white,
-          ),
+          child: Icon(Icons.library_books, color: Colors.white),
         ),
         title: Text(
           collection.name,
@@ -450,19 +451,22 @@ class FlashcardScreen extends StatefulWidget {
 class _FlashcardScreenState extends State<FlashcardScreen> {
   int _currentCardIndex = 0;
   bool _showBack = false;
-  PageController _pageController = PageController();
+  final PageController _pageController = PageController();
 
   @override
   Widget build(BuildContext context) {
     final currentWord = widget.collection.words[_currentCardIndex];
-    final firstSense = currentWord.senseInfo.senseDataList.isNotEmpty
-        ? currentWord.senseInfo.senseDataList.first
-        : null;
+    final firstSense =
+        currentWord.senseInfo.senseDataList.isNotEmpty
+            ? currentWord.senseInfo.senseDataList.first
+            : null;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.collection.name),
-        backgroundColor: _getColorForPartOfSpeech(widget.collection.partOfSpeech),
+        backgroundColor: _getColorForPartOfSpeech(
+          widget.collection.partOfSpeech,
+        ),
       ),
       body: Column(
         children: [
@@ -503,7 +507,10 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
                 padding: EdgeInsets.all(20),
                 child: AnimatedSwitcher(
                   duration: Duration(milliseconds: 300),
-                  child: _showBack ? _buildBackCard(currentWord, firstSense) : _buildFrontCard(currentWord),
+                  child:
+                      _showBack
+                          ? _buildBackCard(currentWord, firstSense)
+                          : _buildFrontCard(currentWord),
                 ),
               ),
             ),
@@ -517,24 +524,29 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
               children: [
                 ElevatedButton(
                   onPressed: _currentCardIndex > 0 ? _previousCard : null,
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
                   child: Text('이전'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey,
-                  ),
                 ),
                 ElevatedButton(
                   onPressed: _flipCard,
-                  child: Text(_showBack ? '앞면 보기' : '뒷면 보기'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _getColorForPartOfSpeech(widget.collection.partOfSpeech),
+                    backgroundColor: _getColorForPartOfSpeech(
+                      widget.collection.partOfSpeech,
+                    ),
                   ),
+                  child: Text(_showBack ? '앞면 보기' : '뒷면 보기'),
                 ),
                 ElevatedButton(
-                  onPressed: _currentCardIndex < widget.collection.words.length - 1 ? _nextCard : null,
-                  child: Text('다음'),
+                  onPressed:
+                      _currentCardIndex < widget.collection.words.length - 1
+                          ? _nextCard
+                          : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _getColorForPartOfSpeech(widget.collection.partOfSpeech),
+                    backgroundColor: _getColorForPartOfSpeech(
+                      widget.collection.partOfSpeech,
+                    ),
                   ),
+                  child: Text('다음'),
                 ),
               ],
             ),
@@ -576,7 +588,11 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
             SizedBox(height: 24),
             Text(
               '카드를 탭하여 뜻 보기',
-              style: TextStyle(fontSize: 14, color: Colors.grey[400], fontStyle: FontStyle.italic),
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[400],
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ],
         ),
@@ -589,7 +605,9 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
       key: ValueKey('back'),
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: _getColorForPartOfSpeech(widget.collection.partOfSpeech).withOpacity(0.1),
+      color: _getColorForPartOfSpeech(
+        widget.collection.partOfSpeech,
+      ).withOpacity(0.1),
       child: Container(
         width: double.infinity,
         padding: EdgeInsets.all(24),
@@ -610,7 +628,7 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
                   textAlign: TextAlign.center,
                 ),
               SizedBox(height: 24),
-              
+
               // Mongolian translation
               Text(
                 sense?.mongolianTranslation ?? '',
@@ -622,7 +640,7 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: 16),
-              
+
               // Korean definition
               Text(
                 sense?.definition ?? '',
@@ -630,33 +648,38 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: 16),
-              
+
               // Mongolian definition
-              if (sense?.mongolianDefinition?.isNotEmpty ?? false)
+              if (sense?.mongolianDefinition.isNotEmpty ?? false)
                 Text(
                   sense!.mongolianDefinition,
                   style: TextStyle(fontSize: 14, color: Colors.green[700]),
                   textAlign: TextAlign.center,
                 ),
-              
+
               // Examples
-              if (sense?.examples?.isNotEmpty ?? false) ...[
+              if (sense?.examples.isNotEmpty ?? false) ...[
                 SizedBox(height: 20),
                 Text(
                   '예문:',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 8),
-                ...sense!.examples.take(2).map(
-                  (example) => Padding(
-                    padding: EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      '• ${example.example}',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                      textAlign: TextAlign.center,
+                ...sense!.examples
+                    .take(2)
+                    .map(
+                      (example) => Padding(
+                        padding: EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          '• ${example.example}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
               ],
             ],
           ),
@@ -673,14 +696,16 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
 
   void _nextCard() {
     setState(() {
-      _currentCardIndex = (_currentCardIndex + 1) % widget.collection.words.length;
+      _currentCardIndex =
+          (_currentCardIndex + 1) % widget.collection.words.length;
       _showBack = false;
     });
   }
 
   void _previousCard() {
     setState(() {
-      _currentCardIndex = (_currentCardIndex - 1) % widget.collection.words.length;
+      _currentCardIndex =
+          (_currentCardIndex - 1) % widget.collection.words.length;
       _showBack = false;
     });
   }
@@ -718,9 +743,10 @@ class WordCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final wordInfo = wordItem.wordInfo;
-    final firstSense = wordItem.senseInfo.senseDataList.isNotEmpty
-        ? wordItem.senseInfo.senseDataList.first
-        : null;
+    final firstSense =
+        wordItem.senseInfo.senseDataList.isNotEmpty
+            ? wordItem.senseInfo.senseDataList.first
+            : null;
 
     if (firstSense == null) {
       return Card(
@@ -797,7 +823,9 @@ class WordCard extends StatelessWidget {
                 '예문:',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
               ),
-              ...firstSense.examples.take(2).map(
+              ...firstSense.examples
+                  .take(2)
+                  .map(
                     (example) => Padding(
                       padding: EdgeInsets.only(top: 4),
                       child: Text(
