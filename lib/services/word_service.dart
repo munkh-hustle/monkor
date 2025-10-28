@@ -8,10 +8,10 @@ class WordService {
     try {
       // Load both JSON files
       final String jsonString1 = await rootBundle.loadString(
-        'assets/hanja1.json',
+        'assets/hanja.json',
       );
       final String jsonString2 = await rootBundle.loadString(
-        'assets/hanja2.json',
+        'assets/korean.json',
       );
 
       final Map<String, dynamic> jsonData1 = json.decode(jsonString1);
@@ -62,6 +62,6 @@ class WordService {
 
   // Get list of available word files
   List<String> getAvailableWordFiles() {
-    return ['assets/hanja1.json', 'assets/hanja2.json'];
+    return ['assets/hanja.json', 'assets/korean.json'];
   }
 }

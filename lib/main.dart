@@ -111,25 +111,63 @@ class _DictionaryHomeState extends State<DictionaryHome> {
     });
   }
 
-  // Get unique collections by part of speech and level
-  List<Collection> getCollections() {
-    Map<String, Collection> collections = {};
+  // Get unique collections by part of speech and level, divided into parts
+List<Collection> getCollections() {
+  Map<String, List<WordItem>> collectionsMap = {};
 
-    for (var word in _words) {
-      final key = '${word.wordInfo.partOfSpeech}-${word.wordInfo.level}';
-      if (!collections.containsKey(key)) {
-        collections[key] = Collection(
-          name: '${word.wordInfo.partOfSpeech} (${word.wordInfo.level})',
-          partOfSpeech: word.wordInfo.partOfSpeech,
-          level: word.wordInfo.level,
-          words: [],
-        );
-      }
-      collections[key]!.words.add(word);
+  // Group words by part of speech and level
+  for (var word in _words) {
+    final key = '${word.wordInfo.partOfSpeech}-${word.wordInfo.level}';
+    if (!collectionsMap.containsKey(key)) {
+      collectionsMap[key] = [];
     }
-
-    return collections.values.toList();
+    collectionsMap[key]!.add(word);
   }
+
+  List<Collection> collections = [];
+
+  // Create collections, dividing large ones into parts
+  collectionsMap.forEach((key, words) {
+    final partOfSpeech = words.first.wordInfo.partOfSpeech;
+    final level = words.first.wordInfo.level;
+    final baseName = '$partOfSpeech ($level)';
+
+    if (words.length <= 100) {
+      // Small collection, no need to divide
+      collections.add(Collection(
+        name: baseName,
+        partOfSpeech: partOfSpeech,
+        level: level,
+        words: words,
+      ));
+    } else {
+      // Large collection, divide into parts of 100 words each
+      final totalParts = (words.length / 100).ceil();
+      for (int i = 0; i < totalParts; i++) {
+        final start = i * 100;
+        final end = (i + 1) * 100;
+        final partWords = words.sublist(
+          start,
+          end < words.length ? end : words.length,
+        );
+
+        collections.add(Collection(
+          name: baseName,
+          partOfSpeech: partOfSpeech,
+          level: level,
+          words: partWords,
+          partNumber: i + 1,
+          totalParts: totalParts,
+        ));
+      }
+    }
+  });
+
+  // Sort collections by name for consistent ordering
+  collections.sort((a, b) => a.displayName.compareTo(b.displayName));
+  
+  return collections;
+}
 
   @override
   Widget build(BuildContext context) {
@@ -163,12 +201,12 @@ class _DictionaryHomeState extends State<DictionaryHome> {
                   child: Text('All Files (Combined)'),
                 ),
                 PopupMenuItem(
-                  value: 'assets/1214752_5994.json',
-                  child: Text('File 1: 1214752_5994.json'),
+                  value: 'assets/hanja.json',
+                  child: Text('File 1: hanja.json'),
                 ),
                 PopupMenuItem(
-                  value: 'assets/1214752_6176.json',
-                  child: Text('File 2: 1214752_6176.json'),
+                  value: 'assets/korean.json',
+                  child: Text('File 2: korean.json'),
                 ),
               ];
             },
@@ -274,70 +312,87 @@ class _DictionaryHomeState extends State<DictionaryHome> {
     );
   }
 
-  // Add this to your _buildFlashcardView method
   Widget _buildFlashcardView() {
-    final collections = getCollections();
+  final collections = getCollections();
+  final totalCollections = _calculateTotalBaseCollections(); // Add this method
 
-    return Column(
-      children: [
-        // File info header
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(16),
-          color: Colors.blue[50],
+  return Column(
+    children: [
+      // File info header
+      Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(16),
+        color: Colors.blue[50],
+        child: Text(
+          '현재 파일: $_currentFile',
+          style: TextStyle(fontSize: 14, color: Colors.blue[800]),
+          textAlign: TextAlign.center,
+        ),
+      ),
+
+      Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Text(
+          '컬렉션 선택',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+      ),
+
+      // Collection statistics - UPDATED
+      Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildStatCard('총 단어', _words.length.toString()),
+            _buildStatCard('기본 컬렉션', totalCollections.toString()), // Changed from '컬렉션'
+            _buildStatCard('세부 파트', collections.length.toString()), // Added this
+            _buildStatCard('레벨', _getLevelCount().toString()),
+          ],
+        ),
+      ),
+
+      SizedBox(height: 16),
+
+      // Info text about partitioning
+      if (collections.length > totalCollections)
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.0),
           child: Text(
-            '현재 파일: $_currentFile',
-            style: TextStyle(fontSize: 14, color: Colors.blue[800]),
+            '큰 컬렉션은 100개 단어씩 나누어져 있습니다',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.orange[700],
+              fontStyle: FontStyle.italic,
+            ),
             textAlign: TextAlign.center,
           ),
         ),
 
-        Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text(
-            '컬렉션 선택',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-        ),
+      SizedBox(height: 8),
 
-        // Collection statistics
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildStatCard('총 단어', _words.length.toString()),
-              _buildStatCard('컬렉션', collections.length.toString()),
-              _buildStatCard('레벨', _getLevelCount().toString()),
-            ],
-          ),
+      Expanded(
+        child: ListView.builder(
+          itemCount: collections.length,
+          itemBuilder: (context, index) {
+            final collection = collections[index];
+            return CollectionCard(
+              collection: collection,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FlashcardScreen(collection: collection),
+                  ),
+                );
+              },
+            );
+          },
         ),
-
-        SizedBox(height: 16),
-
-        Expanded(
-          child: ListView.builder(
-            itemCount: collections.length,
-            itemBuilder: (context, index) {
-              final collection = collections[index];
-              return CollectionCard(
-                collection: collection,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (context) => FlashcardScreen(collection: collection),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
 
   Widget _buildStatCard(String title, String value) {
     return Card(
@@ -363,6 +418,17 @@ class _DictionaryHomeState extends State<DictionaryHome> {
     final levels = _words.map((word) => word.wordInfo.level).toSet();
     return levels.length;
   }
+  // Add this method to _DictionaryHomeState class
+int _calculateTotalBaseCollections() {
+  Map<String, bool> baseCollections = {};
+  
+  for (var word in _words) {
+    final key = '${word.wordInfo.partOfSpeech}-${word.wordInfo.level}';
+    baseCollections[key] = true;
+  }
+  
+  return baseCollections.length;
+}
 }
 
 class Collection {
@@ -370,13 +436,25 @@ class Collection {
   final String partOfSpeech;
   final String level;
   final List<WordItem> words;
+  final int? partNumber; // Add this for partitioned collections
+  final int? totalParts; // Add this for partitioned collections
 
   Collection({
     required this.name,
     required this.partOfSpeech,
     required this.level,
     required this.words,
+    this.partNumber,
+    this.totalParts,
   });
+
+  // Helper method to get display name
+  String get displayName {
+    if (partNumber != null && totalParts != null) {
+      return '$name (파트 $partNumber/$totalParts)';
+    }
+    return name;
+  }
 }
 
 class CollectionCard extends StatelessWidget {
@@ -405,10 +483,20 @@ class CollectionCard extends StatelessWidget {
           child: Icon(Icons.library_books, color: Colors.white),
         ),
         title: Text(
-          collection.name,
+          collection.displayName, // Use displayName instead of name
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
-        subtitle: Text('${collection.words.length}개 단어'),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${collection.words.length}개 단어'),
+            if (collection.partNumber != null)
+              Text(
+                '${collection.totalParts}개 파트 중 ${collection.partNumber}번째',
+                style: TextStyle(fontSize: 12, color: Colors.orange[700]),
+              ),
+          ],
+        ),
         trailing: Icon(Icons.arrow_forward_ios, size: 16),
         onTap: onTap,
       ),
