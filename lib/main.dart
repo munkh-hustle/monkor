@@ -1,7 +1,5 @@
 // main.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'dart:convert';
 import 'models/word_model.dart';
 import 'services/word_service.dart'; // Add this import
 

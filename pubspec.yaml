@@ -22,5 +22,5 @@ flutter:
   
   # ADD THIS ASSETS SECTION
   assets:
-    - assets/1214752_5994.json
-    - assets/1214752_6176.json
+    - assets/hanja1.json
+    - assets/hanja2.json
