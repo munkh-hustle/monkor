@@ -94,12 +94,6 @@ class _DictionaryHomeState extends State<DictionaryHome> {
     return path.split('/').last.split('.').first;
   }
 
-  Future<WordResponse> _loadJsonData() async {
-    final String jsonString = await rootBundle.loadString('assets/words.json');
-    final Map<String, dynamic> jsonData = json.decode(jsonString);
-    return WordResponse.fromJson(jsonData);
-  }
-
   void _searchWords(String query) {
     if (query.isEmpty) {
       setState(() {
