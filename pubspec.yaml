@@ -22,4 +22,5 @@ flutter:
   
   # ADD THIS ASSETS SECTION
   assets:
-    - assets/words.json
+    - assets/1214752_5994.json
+    - assets/1214752_6176.json

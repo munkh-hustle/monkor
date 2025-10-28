@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'models/word_model.dart';
+import 'services/word_service.dart'; // Add this import
 
 void main() {
   runApp(MyApp());
@@ -38,6 +39,10 @@ class _DictionaryHomeState extends State<DictionaryHome> {
   bool _isLoading = true;
   String _errorMessage = '';
   int _currentIndex = 0;
+  String _currentFile = 'All Files'; // Track current loaded file
+
+  // Add WordService instance
+  final WordService _wordService = WordService();
 
   @override
   void initState() {
@@ -45,13 +50,15 @@ class _DictionaryHomeState extends State<DictionaryHome> {
     _loadWords();
   }
 
-  Future<void> _loadWords() async {
+    Future<void> _loadWords() async {
     try {
-      final wordResponse = await _loadJsonData();
+      // Use WordService to load merged data
+      final wordResponse = await _wordService.loadWords();
       setState(() {
         _words = wordResponse.channel.items;
         _filteredWords = _words;
         _isLoading = false;
+        _currentFile = 'All Files (${_words.length} words)';
       });
     } catch (e) {
       setState(() {
@@ -59,6 +66,32 @@ class _DictionaryHomeState extends State<DictionaryHome> {
         _isLoading = false;
       });
     }
+  }
+
+  // New method to load specific file
+  Future<void> _loadSpecificFile(String filePath) async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+      
+      final wordResponse = await _wordService.loadWordsFromFile(filePath);
+      setState(() {
+        _words = wordResponse.channel.items;
+        _filteredWords = _words;
+        _isLoading = false;
+        _currentFile = _getFileName(filePath) + ' (${_words.length} words)';
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = '파일을 불러오는데 실패했습니다: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  String _getFileName(String path) {
+    return path.split('/').last.split('.').first;
   }
 
   Future<WordResponse> _loadJsonData() async {
@@ -109,8 +142,45 @@ class _DictionaryHomeState extends State<DictionaryHome> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('한자-몽골어 사전'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('한자-몽골어 사전'),
+            Text(
+              _currentFile,
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+            ),
+          ],
+        ),
         backgroundColor: Colors.blue[700],
+        actions: [
+          // File selection menu
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'all') {
+                _loadWords(); // Load all files
+              } else {
+                _loadSpecificFile(value);
+              }
+            },
+            itemBuilder: (BuildContext context) {
+              return [
+                PopupMenuItem(
+                  value: 'all',
+                  child: Text('All Files (Combined)'),
+                ),
+                PopupMenuItem(
+                  value: 'assets/1214752_5994.json',
+                  child: Text('File 1: 1214752_5994.json'),
+                ),
+                PopupMenuItem(
+                  value: 'assets/1214752_6176.json',
+                  child: Text('File 2: 1214752_6176.json'),
+                ),
+              ];
+            },
+          ),
+        ],
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
@@ -215,40 +285,88 @@ class _DictionaryHomeState extends State<DictionaryHome> {
     );
   }
 
-  Widget _buildFlashcardView() {
-    final collections = getCollections();
-    
-    return Column(
-      children: [
-        Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text(
-            '컬렉션 선택',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
+// Add this to your _buildFlashcardView method
+Widget _buildFlashcardView() {
+  final collections = getCollections();
+  
+  return Column(
+    children: [
+      // File info header
+      Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(16),
+        color: Colors.blue[50],
+        child: Text(
+          '현재 파일: $_currentFile',
+          style: TextStyle(fontSize: 14, color: Colors.blue[800]),
+          textAlign: TextAlign.center,
         ),
-        Expanded(
-          child: ListView.builder(
-            itemCount: collections.length,
-            itemBuilder: (context, index) {
-              final collection = collections[index];
-              return CollectionCard(
-                collection: collection,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => FlashcardScreen(collection: collection),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
+      ),
+      
+      Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Text(
+          '컬렉션 선택',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
-      ],
-    );
-  }
+      ),
+      
+      // Collection statistics
+      Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildStatCard('총 단어', _words.length.toString()),
+            _buildStatCard('컬렉션', collections.length.toString()),
+            _buildStatCard('레벨', _getLevelCount().toString()),
+          ],
+        ),
+      ),
+      
+      SizedBox(height: 16),
+      
+      Expanded(
+        child: ListView.builder(
+          itemCount: collections.length,
+          itemBuilder: (context, index) {
+            final collection = collections[index];
+            return CollectionCard(
+              collection: collection,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FlashcardScreen(collection: collection),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ),
+    ],
+  );
+}
+
+Widget _buildStatCard(String title, String value) {
+  return Card(
+    child: Padding(
+      padding: EdgeInsets.all(12),
+      child: Column(
+        children: [
+          Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        ],
+      ),
+    ),
+  );
+}
+
+int _getLevelCount() {
+  final levels = _words.map((word) => word.wordInfo.level).toSet();
+  return levels.length;
+}
 }
 
 class Collection {
